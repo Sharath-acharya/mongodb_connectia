@@ -1,146 +1,233 @@
 "use client";
 import { useEffect, useState } from "react";
 
+const AVATAR_COLORS = ["#667eea","#764ba2","#f093fb","#4facfe","#43e97b","#fa709a","#fee140","#a18cd1"];
+const getColor = (name) => AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+const getInitials = (name) => name ? name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2) : "?";
+
 const emptyForm = { name: "", email: "", age: "" };
 
 export default function Home() {
-  const [users, setUsers] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [editId, setEditId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [students, setStudents] = useState([]);
+  const [form, setForm]         = useState(emptyForm);
+  const [editId, setEditId]     = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
+  const [search, setSearch]     = useState("");
 
-  const fetchUsers = async () => {
-    const res = await fetch("/api/users");
+  const fetchStudents = async () => {
+    const res  = await fetch("/api/users");
     const data = await res.json();
-    setUsers(data);
+    setStudents(Array.isArray(data) ? data : []);
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchStudents(); }, []);
+
+  const openAdd = () => {
+    setEditId(null);
+    setForm(emptyForm);
+    setError("");
+    setShowModal(true);
+  };
+
+  const openEdit = (s) => {
+    setEditId(s._id);
+    setForm({ name: s.name, email: s.email, age: s.age || "" });
+    setError("");
+    setShowModal(true);
+  };
+
+  const closeModal = () => { setShowModal(false); setError(""); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     const method = editId ? "PUT" : "POST";
-    const url = editId ? `/api/users/${editId}` : "/api/users";
-
-    const res = await fetch(url, {
+    const url    = editId ? `/api/users/${editId}` : "/api/users";
+    const res    = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, age: Number(form.age) }),
     });
-
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Something went wrong");
+      const d = await res.json();
+      setError(d.error || "Something went wrong");
     } else {
-      setForm(emptyForm);
-      setEditId(null);
-      fetchUsers();
+      closeModal();
+      fetchStudents();
     }
     setLoading(false);
   };
 
-  const handleEdit = (user) => {
-    setEditId(user._id);
-    setForm({ name: user.name, email: user.email, age: user.age || "" });
-  };
-
   const handleDelete = async (id) => {
-    if (!confirm("Delete this user?")) return;
+    if (!confirm("Delete this student?")) return;
     await fetch(`/api/users/${id}`, { method: "DELETE" });
-    fetchUsers();
+    fetchStudents();
   };
 
-  const handleCancel = () => {
-    setEditId(null);
-    setForm(emptyForm);
-    setError("");
-  };
+  const filtered = students.filter(s =>
+    s.name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.email?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <main>
-      <h1>User CRUD App</h1>
+    <div className="container">
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h2>{editId ? "Edit User" : "Add User"}</h2>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <input
-          style={styles.input}
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
-        <input
-          style={styles.input}
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-        />
-        <input
-          style={styles.input}
-          placeholder="Age"
-          type="number"
-          value={form.age}
-          onChange={(e) => setForm({ ...form, age: e.target.value })}
-        />
-        <div style={{ display: "flex", gap: 8 }}>
-          <button style={styles.btn} type="submit" disabled={loading}>
-            {loading ? "Saving..." : editId ? "Update" : "Create"}
-          </button>
-          {editId && (
-            <button style={{ ...styles.btn, background: "#888" }} type="button" onClick={handleCancel}>
-              Cancel
-            </button>
-          )}
+      {/* Header */}
+      <div className="header">
+        <div>
+          <h1>🎓 Student Dashboard</h1>
+          <p>Manage student records with ease</p>
         </div>
-      </form>
+        <button className="btn btn-ghost" onClick={openAdd} style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
+          + Add Student
+        </button>
+      </div>
 
-      {/* Users Table */}
-      <h2>Users ({users.length})</h2>
-      {users.length === 0 ? (
-        <p>No users yet. Add one above.</p>
-      ) : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Age</th>
-              <th style={styles.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user._id}>
-                <td style={styles.td}>{user.name}</td>
-                <td style={styles.td}>{user.email}</td>
-                <td style={styles.td}>{user.age || "-"}</td>
-                <td style={styles.td}>
-                  <button style={styles.editBtn} onClick={() => handleEdit(user)}>Edit</button>
-                  <button style={styles.deleteBtn} onClick={() => handleDelete(user._id)}>Delete</button>
-                </td>
+      {/* Stats */}
+      <div className="stats">
+        <div className="stat-card">
+          <div className="label">Total Students</div>
+          <div className="value">{students.length}</div>
+        </div>
+        <div className="stat-card" style={{ borderLeftColor: "#48bb78" }}>
+          <div className="label">Search Results</div>
+          <div className="value">{filtered.length}</div>
+        </div>
+        <div className="stat-card" style={{ borderLeftColor: "#ed8936" }}>
+          <div className="label">Avg Age</div>
+          <div className="value">
+            {students.length
+              ? Math.round(students.reduce((a, s) => a + (s.age || 0), 0) / students.length) || "—"
+              : "—"}
+          </div>
+        </div>
+      </div>
+
+      {/* Table card */}
+      <div className="card">
+        <div className="card-header">
+          <h2>All Students</h2>
+          <input
+            className="search-input"
+            placeholder="Search name or email..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Student</th>
+                <th>Email</th>
+                <th>Age</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="empty">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      <p>{search ? "No students match your search." : "No students yet. Add one to get started."}</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((s, i) => (
+                  <tr key={s._id}>
+                    <td style={{ color: "#a0aec0", fontWeight: 600 }}>{i + 1}</td>
+                    <td>
+                      <div className="name-cell">
+                        <div className="avatar" style={{ background: getColor(s.name) }}>
+                          {getInitials(s.name)}
+                        </div>
+                        <span style={{ fontWeight: 600 }}>{s.name}</span>
+                      </div>
+                    </td>
+                    <td style={{ color: "#4a5568" }}>{s.email}</td>
+                    <td>
+                      {s.age ? (
+                        <span className="badge badge-blue">{s.age} yrs</span>
+                      ) : "—"}
+                    </td>
+                    <td><span className="badge badge-green">Active</span></td>
+                    <td>
+                      <button className="btn btn-warning btn-sm" onClick={() => openEdit(s)} style={{ marginRight: 6 }}>
+                        ✏️ Edit
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s._id)}>
+                        🗑️ Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2>{editId ? "✏️ Edit Student" : "➕ Add New Student"}</h2>
+
+            {error && <div className="alert alert-error">{error}</div>}
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Full Name *</label>
+                <input
+                  placeholder="e.g. John Doe"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email Address *</label>
+                <input
+                  type="email"
+                  placeholder="e.g. john@example.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Age</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 20"
+                  min="1" max="100"
+                  value={form.age}
+                  onChange={e => setForm({ ...form, age: e.target.value })}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? "Saving..." : editId ? "Update Student" : "Add Student"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
-    </main>
+    </div>
   );
 }
-
-const styles = {
-  form: { background: "#f5f5f5", padding: "1.5rem", borderRadius: 8, marginBottom: "2rem" },
-  input: { display: "block", width: "100%", padding: "0.5rem", marginBottom: "0.75rem", fontSize: 16, borderRadius: 4, border: "1px solid #ccc", boxSizing: "border-box" },
-  btn: { padding: "0.5rem 1.5rem", background: "#0070f3", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "left", padding: "0.75rem", borderBottom: "2px solid #ddd", background: "#f0f0f0" },
-  td: { padding: "0.75rem", borderBottom: "1px solid #eee" },
-  editBtn: { marginRight: 8, padding: "0.3rem 0.8rem", background: "#f0a500", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" },
-  deleteBtn: { padding: "0.3rem 0.8rem", background: "#e00", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" },
-};
