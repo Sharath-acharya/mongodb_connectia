@@ -4,25 +4,37 @@ import User from "@/lib/models/User";
 
 // GET single user
 export async function GET(req, { params }) {
-  await connectDB();
-  const user = await User.findById(params.id);
-  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(user);
+  try {
+    await connectDB();
+    const user = await User.findById(params.id);
+    if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(user);
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 // PUT update user
 export async function PUT(req, { params }) {
-  await connectDB();
-  const body = await req.json();
-  const user = await User.findByIdAndUpdate(params.id, body, { new: true });
-  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(user);
+  try {
+    await connectDB();
+    const body = await req.json();
+    const user = await User.findByIdAndUpdate(params.id, body, { new: true });
+    if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(user);
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 // DELETE user
 export async function DELETE(req, { params }) {
-  await connectDB();
-  const user = await User.findByIdAndDelete(params.id);
-  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ message: "Deleted successfully" });
+  try {
+    await connectDB();
+    const user = await User.findByIdAndDelete(params.id);
+    if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ message: "Deleted successfully" });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }

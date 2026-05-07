@@ -46,17 +46,21 @@ export default function Home() {
     setError("");
     const method = editId ? "PUT" : "POST";
     const url    = editId ? `/api/users/${editId}` : "/api/users";
-    const res    = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, age: Number(form.age) }),
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, age: Number(form.age) }),
+      });
       const d = await res.json();
-      setError(d.error || "Something went wrong");
-    } else {
-      closeModal();
-      fetchStudents();
+      if (!res.ok) {
+        setError(d.error || `Server error (${res.status})`);
+      } else {
+        closeModal();
+        fetchStudents();
+      }
+    } catch (err) {
+      setError("Network error — could not reach the server.");
     }
     setLoading(false);
   };
