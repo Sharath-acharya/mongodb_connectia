@@ -1,28 +1,19 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import User from "@/lib/models/User";
+import { getAll, create } from "./store";
 
-// GET all users
 export async function GET() {
-  try {
-    await connectDB();
-    const users = await User.find().sort({ createdAt: -1 });
-    return NextResponse.json(users);
-  } catch (err) {
-    console.error("GET /api/users error:", err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  return NextResponse.json(getAll());
 }
 
-// POST create user
 export async function POST(req) {
   try {
-    await connectDB();
     const body = await req.json();
-    const user = await User.create(body);
-    return NextResponse.json(user, { status: 201 });
+    if (!body.name || !body.email) {
+      return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
+    }
+    const student = create({ ...body, age: Number(body.age) || null });
+    return NextResponse.json(student, { status: 201 });
   } catch (err) {
-    console.error("POST /api/users error:", err.message);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

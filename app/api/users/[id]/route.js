@@ -1,40 +1,25 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import User from "@/lib/models/User";
+import { getById, update, remove } from "../store";
 
-// GET single user
 export async function GET(req, { params }) {
-  try {
-    await connectDB();
-    const user = await User.findById(params.id);
-    if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(user);
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const student = getById(params.id);
+  if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(student);
 }
 
-// PUT update user
 export async function PUT(req, { params }) {
   try {
-    await connectDB();
-    const body = await req.json();
-    const user = await User.findByIdAndUpdate(params.id, body, { new: true });
-    if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(user);
+    const body    = await req.json();
+    const student = update(params.id, { ...body, age: Number(body.age) || null });
+    if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(student);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// DELETE user
 export async function DELETE(req, { params }) {
-  try {
-    await connectDB();
-    const user = await User.findByIdAndDelete(params.id);
-    if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ message: "Deleted successfully" });
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const student = remove(params.id);
+  if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ message: "Deleted successfully" });
 }
